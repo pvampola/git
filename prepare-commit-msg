@@ -1,0 +1,28 @@
+#!/bin/bash
+
+BRANCH_NAME=$(git branch | grep '*' | tr -d '* ')
+
+echo "Branch:"$BRANCH_NAME
+# hook will be skipped on interactive rebase
+if [[ $BRANCH_NAME =~ ^\(no[[:space:]]branch,[[:space:]]rebasing.*$ ]];
+then
+  exit 0
+fi
+
+COMMIT_MSG_FILE=$1
+FIRST_COMMIT_LINE=`head -n1 $COMMIT_MSG_FILE`
+
+# commit message is ok - exitting
+if [[ $FIRST_COMMIT_LINE =~ ^((\[?ABC-[0-9]+)|(\[?GLOBAL)|(Merge)|(Revert)) ]] ; then 
+	exit 0
+fi
+
+# if branch is in format eg.: feature/ABC-1234... or GLOBAL... it will prepend required part automatically to commit message
+if [[ $BRANCH_NAME =~ ^(.*\/)?(ABC-[0-9]+|GLOBAL).* ]]; then 
+	BRANCH_PREFIX=${BASH_REMATCH[1]}
+	ISSUE=${BASH_REMATCH[2]}
+	sed -i.bak -e "1s/^/$ISSUE /" $COMMIT_MSG_FILE
+else
+	echo "Bad commit message. Examples: ABC-1234<commit msg>, [ABC-1234]<commit msg>, [GLOBAL]<commit msg>, GLOBAL<commit msg>"
+	exit 1
+fi
